@@ -12,6 +12,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -19,8 +20,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
 import androidx.activity.ComponentActivity;
-import androidx.core.app.NotificationManagerCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 public class MainActivity extends ComponentActivity {
@@ -36,6 +38,8 @@ public class MainActivity extends ComponentActivity {
     private NotificationHistoryDatabaseHelper dbHelper;
     private BroadcastReceiver updateReceiver;
     private Button toggleServiceButton;
+
+    private static final int POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +62,7 @@ public class MainActivity extends ComponentActivity {
 
         loadKeyword();
         checkNotificationPermission();
+        checkReadNotificationPermission();
 
         Button saveKeywordButton = findViewById(R.id.btn_save_keyword);
         saveKeywordButton.setOnClickListener(v -> saveKeyword());
@@ -100,8 +105,7 @@ public class MainActivity extends ComponentActivity {
 
     private void saveKeyword() {
         String keyword = keywordEditText.getText().toString();
-        if(keyword.isEmpty())
-        {
+        if (keyword.isEmpty()) {
             showUnsuccessfulDialog();
             return;
         }
@@ -119,6 +123,17 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
+
+    private void checkReadNotificationPermission() {
         ContentResolver contentResolver = getContentResolver();
         String enabledListeners = Settings.Secure.getString(contentResolver, "enabled_notification_listeners");
 
@@ -175,6 +190,7 @@ public class MainActivity extends ComponentActivity {
 
     private void createTestNotification() {
         String keyword = keywordEditText.getText().toString();
+
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -191,10 +207,10 @@ public class MainActivity extends ComponentActivity {
         );
 
         Notification notification = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !keyword.isEmpty()) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             notification = new Notification.Builder(this, CHANNEL_ID)
                     .setContentTitle("Notificação de testes")
-                    .setContentText("Exemplo de notificação com a palavra: " + keyword)
+                    .setContentText("Exemplo de notificação com a palavra: " + (keyword.isEmpty() ? "Palavra-chave" : keyword))
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)

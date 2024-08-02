@@ -2,16 +2,16 @@ package com.leandro.notifyblock;
 
 import android.app.Notification;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
-import android.content.Intent;
 
 public class MyNotificationListenerService extends NotificationListenerService {
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
-        if(!MainActivity.isServiceRunning) {
+        if (!MainActivity.isServiceRunning) {
             return;
         }
         Notification notification = sbn.getNotification();
