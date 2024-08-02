@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 public class KeywordsSettingsDatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "keywords_settings.db";
@@ -46,7 +47,14 @@ public class KeywordsSettingsDatabaseHelper extends SQLiteOpenHelper {
                 new String[]{packageName}
         );
         if (rowsUpdated == 0) {
-            db.insert(TABLE_KEYWORDS, null, values);
+            long newRowId = db.insert(TABLE_KEYWORDS, null, values);
+            if (newRowId == -1) {
+                Log.e("KeywordsSettingsDB", "Erro ao inserir palavra-chave: " + keyword);
+            } else {
+                Log.i("KeywordsSettingsDB", "Palavra-chave inserida com sucesso: " + keyword);
+            }
+        } else {
+            Log.i("KeywordsSettingsDB", "Palavra-chave atualizada com sucesso: " + keyword);
         }
         db.close();
     }

@@ -107,6 +107,8 @@ public class MyNotificationListenerService extends NotificationListenerService {
                 keywords.append(keyword);
                 isFirst = false;
             }
+        } catch (Exception e) {
+            Log.e("MyNotificationListenerService", "Erro ao carregar palavras-chave", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
