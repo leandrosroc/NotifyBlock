@@ -126,7 +126,7 @@
         android:visibility="gone"
         android:textColor="@color/colorAccent"
         android:textSize="14sp"
-        app:layout_constraintTop_toBottomOf="@+id/tv_notification_history"
+        app:layout_constraintTop_toBottomOf="@+id/sv_notification_history"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
