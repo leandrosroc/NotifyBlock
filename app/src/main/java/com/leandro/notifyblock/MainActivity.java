@@ -11,11 +11,12 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,15 +28,14 @@ import androidx.core.content.ContextCompat;
 
 public class MainActivity extends ComponentActivity {
 
-    public static final String PREFS_NAME = "NotifyBlockPrefs";
-    public static final String KEYWORDS_KEY = "keywords";
     private static final String CHANNEL_ID = "test_channel";
     public static Boolean isServiceRunning = true;
     private TextView permissionInfoTextView;
     private EditText keywordEditText;
     private TextView notificationHistoryTextView;
     private Button openSettingsButton;
-    private NotificationHistoryDatabaseHelper dbHelper;
+    private NotificationHistoryDatabaseHelper dbHistoryHelper;
+    private KeywordsSettingsDatabaseHelper dbSettingsHelper;
     private BroadcastReceiver updateReceiver;
     private Button toggleServiceButton;
 
@@ -50,9 +50,10 @@ public class MainActivity extends ComponentActivity {
         notificationHistoryTextView = findViewById(R.id.tv_notification_history);
         permissionInfoTextView = findViewById(R.id.tv_permission_info);
 
-        dbHelper = new NotificationHistoryDatabaseHelper(this);
+        dbHistoryHelper = new NotificationHistoryDatabaseHelper(this);
+        dbSettingsHelper = new KeywordsSettingsDatabaseHelper(this);
 
-        updateReceiver = new NotificationUpdateReceiver(notificationHistoryTextView, dbHelper);
+        updateReceiver = new NotificationUpdateReceiver(notificationHistoryTextView, dbHistoryHelper);
         IntentFilter filter = new IntentFilter("UPDATE_NOTIFICATION_HISTORY");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -97,11 +98,9 @@ public class MainActivity extends ComponentActivity {
     private void toggleNotificationService() {
         if (isServiceRunning) {
             toggleServiceButton.setText("Ativar");
-            isServiceRunning = false;
             removePermanentNotification();
         } else {
             toggleServiceButton.setText("Desativar");
-            isServiceRunning = true;
             createPermanentNotification();
         }
     }
@@ -134,11 +133,13 @@ public class MainActivity extends ComponentActivity {
         }
 
         notificationManager.notify(2, notification);
+        isServiceRunning = true;
     }
 
     private void removePermanentNotification() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(2);
+        isServiceRunning = false;
     }
 
     private void saveKeyword() {
@@ -147,17 +148,44 @@ public class MainActivity extends ComponentActivity {
             showUnsuccessfulDialog();
             return;
         }
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEYWORDS_KEY, keyword);
-        editor.apply();
+
+        String packageName = getPackageName();
+
+        dbSettingsHelper.addOrUpdateKeyword(keyword, packageName);
         showSuccessDialog();
     }
 
-    private void loadKeyword() {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String keyword = sharedPreferences.getString(KEYWORDS_KEY, "");
-        keywordEditText.setText(keyword);
+    public void loadKeyword() {
+        String packageName = getPackageName();
+
+        Cursor cursor = dbSettingsHelper.getKeywordsByPackage(packageName);
+        if (cursor != null) {
+            try {
+                int keywordColumnIndex = cursor.getColumnIndex("keyword");
+
+                if (keywordColumnIndex == -1) {
+                    Log.e("MainActivity", "Coluna 'keyword' não encontrada.");
+                    return;
+                }
+
+                StringBuilder keywords = new StringBuilder();
+                boolean isFirst = true;
+
+                while (cursor.moveToNext()) {
+                    String keyword = cursor.getString(keywordColumnIndex);
+                    if (!isFirst) {
+                        keywords.append(";");
+                    }
+                    keywords.append(keyword);
+                    isFirst = false;
+                }
+                keywordEditText.setText(keywords.toString());
+            } finally {
+                cursor.close();
+            }
+        } else {
+            Log.e("MainActivity", "Cursor retornado é null.");
+        }
     }
 
     private void checkNotificationPermission() {
@@ -262,7 +290,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void clearNotificationHistory() {
-        dbHelper.clearAllNotifications();
+        dbHistoryHelper.clearAllNotifications();
         updateNotificationHistory();
     }
 

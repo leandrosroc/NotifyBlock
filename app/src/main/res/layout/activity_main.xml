@@ -96,17 +96,27 @@
         android:padding="12dp"
         android:textSize="16sp" />
 
-    <TextView
-        android:id="@+id/tv_notification_history"
-        android:layout_width="wrap_content"
+    <ScrollView
+        android:id="@+id/sv_notification_history"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Histórico de notificações bloqueadas"
-        android:textSize="18sp"
-        android:textStyle="bold"
         app:layout_constraintTop_toBottomOf="@+id/btn_clear_history"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:id="@+id/tv_notification_history"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Histórico de notificações bloqueadas"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@+id/btn_clear_history"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp" />
+    </ScrollView>
 
     <TextView
         android:id="@+id/tv_permission_info"

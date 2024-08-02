@@ -1,14 +1,22 @@
 package com.leandro.notifyblock;
 
 import android.app.Notification;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
+import android.util.Log;
 
 public class MyNotificationListenerService extends NotificationListenerService {
+
+    private KeywordsSettingsDatabaseHelper dbSettingsHelper;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        dbSettingsHelper = new KeywordsSettingsDatabaseHelper(this);
+    }
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
@@ -23,7 +31,7 @@ public class MyNotificationListenerService extends NotificationListenerService {
         String packageName = sbn.getPackageName();
         String appName = getAppNameFromPackage(packageName);
 
-        String keywords = loadKeyword();
+        String keywords = loadKeyword(null);
         if (keywords != null && !keywords.isEmpty()) {
             String[] keywordArray = keywords.split(";");
             boolean foundKeyword = false;
@@ -74,8 +82,36 @@ public class MyNotificationListenerService extends NotificationListenerService {
         }
     }
 
-    private String loadKeyword() {
-        SharedPreferences sharedPreferences = getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
-        return sharedPreferences.getString(MainActivity.KEYWORDS_KEY, "");
+    private String loadKeyword(String packageName) {
+        Cursor cursor;
+        if (packageName == null) {
+            cursor = dbSettingsHelper.getAllKeywords();
+        } else {
+            cursor = dbSettingsHelper.getKeywordsByPackage(packageName);
+        }
+
+        StringBuilder keywords = new StringBuilder();
+        try {
+            int keywordColumnIndex = cursor.getColumnIndex("keyword");
+            if (keywordColumnIndex == -1) {
+                Log.e("MyNotificationListenerService", "Coluna 'keyword' não encontrada.");
+                return "";
+            }
+
+            boolean isFirst = true;
+            while (cursor.moveToNext()) {
+                String keyword = cursor.getString(keywordColumnIndex);
+                if (!isFirst) {
+                    keywords.append(";");
+                }
+                keywords.append(keyword);
+                isFirst = false;
+            }
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return keywords.toString();
     }
 }
