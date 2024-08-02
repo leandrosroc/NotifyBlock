@@ -28,7 +28,7 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends ComponentActivity {
 
     public static final String PREFS_NAME = "NotifyBlockPrefs";
-    public static final String KEYWORD_KEY = "keyword";
+    public static final String KEYWORDS_KEY = "keywords";
     private static final String CHANNEL_ID = "test_channel";
     public static Boolean isServiceRunning = true;
     private TextView permissionInfoTextView;
@@ -46,7 +46,7 @@ public class MainActivity extends ComponentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        keywordEditText = findViewById(R.id.et_keyword);
+        keywordEditText = findViewById(R.id.et_keywords);
         notificationHistoryTextView = findViewById(R.id.tv_notification_history);
         permissionInfoTextView = findViewById(R.id.tv_permission_info);
 
@@ -85,6 +85,7 @@ public class MainActivity extends ComponentActivity {
         toggleServiceButton.setOnClickListener(v -> toggleNotificationService());
 
         updateNotificationHistory();
+        createPermanentNotification();
     }
 
     @Override
@@ -97,10 +98,47 @@ public class MainActivity extends ComponentActivity {
         if (isServiceRunning) {
             toggleServiceButton.setText("Ativar");
             isServiceRunning = false;
+            removePermanentNotification();
         } else {
             toggleServiceButton.setText("Desativar");
             isServiceRunning = true;
+            createPermanentNotification();
         }
+    }
+
+    private void createPermanentNotification() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Service Notifications", NotificationManager.IMPORTANCE_LOW);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Notification notification = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            notification = new Notification.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Serviço Ativo")
+                    .setContentText("O serviço está ativo em segundo plano.")
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentIntent(pendingIntent)
+                    .setOngoing(true)
+                    .build();
+        }
+
+        notificationManager.notify(2, notification);
+    }
+
+    private void removePermanentNotification() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(2);
     }
 
     private void saveKeyword() {
@@ -111,14 +149,14 @@ public class MainActivity extends ComponentActivity {
         }
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEYWORD_KEY, keyword);
+        editor.putString(KEYWORDS_KEY, keyword);
         editor.apply();
         showSuccessDialog();
     }
 
     private void loadKeyword() {
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String keyword = sharedPreferences.getString(KEYWORD_KEY, "");
+        String keyword = sharedPreferences.getString(KEYWORDS_KEY, "");
         keywordEditText.setText(keyword);
     }
 
@@ -156,6 +194,7 @@ public class MainActivity extends ComponentActivity {
                 .setPositiveButton("Permitir", (dialog, which) -> {
                     Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
                     startActivity(intent);
+                    finish();
                 })
                 .setNegativeButton("Cancelar", (dialog, which) -> finish())
                 .setCancelable(false)
@@ -165,7 +204,7 @@ public class MainActivity extends ComponentActivity {
     private void showSuccessDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Sucesso")
-                .setMessage("Palavra-chave salva com sucesso!")
+                .setMessage("Palavras-chave salva com sucesso!")
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {

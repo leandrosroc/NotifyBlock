@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 
@@ -15,18 +16,41 @@ public class MyNotificationListenerService extends NotificationListenerService {
             return;
         }
         Notification notification = sbn.getNotification();
-        CharSequence notificationText = notification.extras.getCharSequence(Notification.EXTRA_TEXT);
+        Bundle extras = notification.extras;
+        CharSequence title = extras.getCharSequence(Notification.EXTRA_TITLE);
+        CharSequence text = extras.getCharSequence(Notification.EXTRA_TEXT);
 
         String packageName = sbn.getPackageName();
         String appName = getAppNameFromPackage(packageName);
 
-        String keyword = loadKeyword();
-        if (notificationText != null && notificationText.toString().contains(keyword)) {
-            cancelNotification(sbn.getKey());
-            addNotificationToHistory(appName + " - " + notificationText.toString());
-
-            Intent intent = new Intent("UPDATE_NOTIFICATION_HISTORY");
-            sendBroadcast(intent);
+        String keywords = loadKeyword();
+        if (keywords != null && !keywords.isEmpty()) {
+            String[] keywordArray = keywords.split(";");
+            boolean foundKeyword = false;
+            if (text != null) {
+                for (String keyword : keywordArray) {
+                    String trimmedKeyword = keyword.trim();
+                    if (!trimmedKeyword.isEmpty() && text.toString().contains(trimmedKeyword)) {
+                        foundKeyword = true;
+                        break;
+                    }
+                }
+            }
+            if (!foundKeyword && title != null) {
+                for (String keyword : keywordArray) {
+                    String trimmedKeyword = keyword.trim();
+                    if (!trimmedKeyword.isEmpty() && title.toString().contains(trimmedKeyword)) {
+                        foundKeyword = true;
+                        break;
+                    }
+                }
+            }
+            if (foundKeyword) {
+                cancelNotification(sbn.getKey());
+                addNotificationToHistory(appName + " - " + title + " - " + text.toString());
+                Intent intent = new Intent("UPDATE_NOTIFICATION_HISTORY");
+                sendBroadcast(intent);
+            }
         }
     }
 
@@ -52,6 +76,6 @@ public class MyNotificationListenerService extends NotificationListenerService {
 
     private String loadKeyword() {
         SharedPreferences sharedPreferences = getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
-        return sharedPreferences.getString(MainActivity.KEYWORD_KEY, "");
+        return sharedPreferences.getString(MainActivity.KEYWORDS_KEY, "");
     }
 }
